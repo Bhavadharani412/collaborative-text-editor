@@ -1,0 +1,254 @@
+/* GLOBAL */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #f1f3f4;
+}
+
+/* ========================= */
+/* ✅ FONTS (CRITICAL) */
+/* ========================= */
+
+.ql-font-arial { font-family: Arial; }
+.ql-font-times-new-roman { font-family: "Times New Roman"; }
+.ql-font-roboto { font-family: Roboto; }
+.ql-font-open-sans { font-family: "Open Sans"; }
+.ql-font-lato { font-family: Lato; }
+.ql-font-montserrat { font-family: Montserrat; }
+.ql-font-poppins { font-family: Poppins; }
+.ql-font-raleway { font-family: Raleway; }
+.ql-font-ubuntu { font-family: Ubuntu; }
+.ql-font-playfair { font-family: "Playfair Display"; }
+
+/* ========================= */
+/* ✅ FONT DROPDOWN FIX */
+/* ========================= */
+
+.ql-snow .ql-picker.ql-font .ql-picker-item::before {
+  content: attr(data-value);
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label::before {
+  content: "Font";
+}
+
+/* ========================= */
+/* ✅ FONT SIZE FIX */
+/* ========================= */
+
+.ql-size-8px { font-size: 8px; }
+.ql-size-12px { font-size: 12px; }
+.ql-size-16px { font-size: 16px; }
+.ql-size-20px { font-size: 20px; }
+.ql-size-24px { font-size: 24px; }
+
+/* dropdown labels */
+.ql-snow .ql-picker.ql-size .ql-picker-label::before {
+  content: "Size";
+}
+
+.ql-snow .ql-picker-item[data-value="8px"]::before { content: "8"; }
+.ql-snow .ql-picker-item[data-value="12px"]::before { content: "12"; }
+.ql-snow .ql-picker-item[data-value="16px"]::before { content: "16"; }
+.ql-snow .ql-picker-item[data-value="20px"]::before { content: "20"; }
+.ql-snow .ql-picker-item[data-value="24px"]::before { content: "24"; }
+
+/* ========================= */
+/* UI STYLING */
+/* ========================= */
+
+/* TOPBAR */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.toggle {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.toggle.active {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+/* EDITOR */
+.editor-container {
+  max-width: 900px;
+  margin: 20px auto;
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* TITLE */
+.doc-title {
+  font-size: 20px;
+  font-weight: 600;
+  border: none;
+  outline: none;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* STATUS */
+.status {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+/* TYPING */
+.typing {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+/* ========================= */
+/* TOOLBAR */
+/* ========================= */
+
+.ql-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.ql-toolbar .ql-formats {
+  margin-right: 8px;
+  border-right: 1px solid #eee;
+  padding-right: 8px;
+}
+
+.ql-toolbar button svg {
+  fill: #444;
+}
+
+.ql-toolbar button:hover svg {
+  fill: #000;
+}
+
+.ql-toolbar button.ql-active {
+  background: #e8f0fe;
+  border-radius: 6px;
+}
+
+/* hover */
+.ql-toolbar button:hover,
+.ql-picker-item:hover {
+  background: #f1f3f4;
+  border-radius: 6px;
+}
+
+/* ========================= */
+/* EDITOR CONTENT */
+/* ========================= */
+
+.ql-container {
+  border: none !important;
+}
+
+.ql-editor {
+  min-height: 80vh;
+  padding: 40px;
+  font-size: 16px;
+  line-height: 1.7;
+  background: #fff;
+}
+
+/* ========================= */
+/* BUTTONS */
+/* ========================= */
+
+button {
+  border: 1px solid #ddd;
+  background: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #f1f3f4;
+}
+
+/* ========================= */
+/* DOCS PAGE */
+/* ========================= */
+
+.docs-container {
+  padding: 20px;
+}
+
+.docs-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.doc-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-card:hover {
+  transform: translateY(-2px);
+}
+
+.doc-title {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-id {
+  font-size: 12px;
+  color: #888;
+}
+
+.delete-btn {
+  align-self: flex-end;
+  font-size: 12px;
+}
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  margin-top: 100px;
+  color: #666;
+}
+
+.empty-state button {
+  margin-top: 10px;
+}
+
+/* CURSOR */
+.ql-toolbar button,
+.ql-picker-label,
+.ql-picker-item {
+  cursor: pointer;
+}
