@@ -42,26 +42,29 @@ graph TD
         YJ --> IDB
     end
 
-    subgraph Transport
-        WS["y-websocket-server\n:1234\n(Yjs sync relay)"]
-        EX["Express + Socket.IO\n:3001\n(document metadata)"]
+    subgraph Transport ["Unified Node.js Process (Port: 3001)"]
+        EX["Express App\n(REST API / Health)"]
+        SIO["Socket.IO Server\n(/socket.io)"]
+        YWS["Yjs WebSocket Server\n(/yjs)"]
     end
 
-    YJ <-->|"WebSocket\ndelta sync"| WS
-    UI <-->|"Socket.IO\njoin / save events"| EX
+    YJ <-->|"WebSocket /yjs"| YWS
+    UI <-->|"Socket.IO /socket.io"| SIO
 
     subgraph Storage
         MEM["In-memory Map\n(document snapshots)\nmax 100 docs LRU"]
         LS["localStorage\n(document list)"]
     end
 
-    EX --> MEM
+    SIO --> MEM
     UI --> LS
 ```
 
-> **Two separate server processes** run in parallel:
-> - **`y-websocket-server` (port 1234)** — Yjs WebSocket relay that propagates CRDT delta updates between all connected peers. This is what actually syncs the document content in real time.
-> - **`Express + Socket.IO` (port 3001)** — Lightweight signalling server that tracks document snapshots in memory, broadcasts coarse-grained events (join, save), and exposes a `/health` endpoint.
+> **Single Server Process**:
+> The backend has been refactored into a single Node.js process (on port 3001) exposing:
+> - Express REST API and `/health` route
+> - Socket.IO endpoints on `/socket.io` for coarse-grained events (join, save)
+> - Yjs WebSocket sync server on `/yjs` for conflict-free real-time CRDT updates
 
 ---
 
@@ -90,8 +93,8 @@ collaborative-text-editor/
 │       └── utils/
 │           └── generateId.js       # Deterministic slug ID from document name
 │
-└── server/                         # Node.js + Express + Socket.IO backend
-    ├── index.js                    # Main server — CORS, socket events, document store, graceful shutdown
+└── server/                         # Node.js + Express + Socket.IO + Yjs unified backend
+    ├── index.js                    # Main server — CORS, socket events, document store, Yjs WebSocket handler
     └── package.json
 ```
 
@@ -125,15 +128,9 @@ cd ../server
 npm install
 ```
 
-### 3 — Start the Yjs WebSocket relay
+### 3 — Start the backend server
 
-The Yjs relay is what syncs document content in real time. Run it in a dedicated terminal:
-
-```bash
-npx y-websocket-server --port 1234
-```
-
-### 4 — Start the Express server
+The unified server runs the Express app, Socket.IO, and the Yjs WebSocket server concurrently.
 
 ```bash
 # Inside /server
@@ -142,7 +139,7 @@ npm run dev          # auto-restarts on file changes (node --watch)
 npm start            # production
 ```
 
-### 5 — Start the React app
+### 4 — Start the React app
 
 ```bash
 # Inside /client
@@ -155,11 +152,27 @@ Open **http://localhost:5173** in your browser.
 
 ## 🌍 Environment Variables
 
+### Client (`client/`)
+
+For local development, create a `client/.env.local` file:
+
+```env
+VITE_API_URL=http://localhost:3001
+VITE_YJS_URL=ws://localhost:3001/yjs
+```
+
+For production (e.g. Vercel):
+
+```env
+VITE_API_URL=https://collaborative-text-editor-lhta.onrender.com
+VITE_YJS_URL=wss://collaborative-text-editor-lhta.onrender.com/yjs
+```
+
 ### Server (`server/`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `3001` | Express server listen port |
+| `PORT` | `3001` | Server listen port |
 | `CLIENT_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for the frontend |
 
 Create a `server/.env` file (optional):

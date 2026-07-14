@@ -10,24 +10,30 @@
 
 ## Overview
 
-This server is a **lightweight signalling layer** — it does not handle Yjs CRDT sync
-directly. Real-time document content sync is handled by the separate
-[`y-websocket-server`](https://github.com/yjs/y-websocket) relay (port 1234).
+This server is a **unified backend** that hosts:
+- Express REST API and health checks (port 3001)
+- Socket.IO server on `/socket.io` for coarse-grained document metadata events (join, save)
+- Yjs WebSocket server on `/yjs` for real-time conflict-free CRDT document updates
 
-**This server (port 3001) handles:**
-
+**This server handles:**
+- Handling `/yjs` WebSocket upgrade requests to sync live doc content
 - Tracking document snapshots in memory (in-memory `documents` map, LRU capped at 100)
-- Relaying coarse-grained socket events: join, save, broadcast changes
+- Relaying coarse-grained socket events (join, save, broadcast changes) via Socket.IO
 - Exposing a `/health` REST endpoint for uptime and document count monitoring
 - CORS restricted to the frontend origin (configurable via env var)
 - Graceful shutdown on `SIGTERM` / `SIGINT`
 
 ```
-Browser ──── Socket.IO ────► Express Server :3001
-                              (join, save, snapshot)
-
-Browser ──── WebSocket ────► y-websocket-server :1234
-                              (Yjs CRDT delta sync — run separately)
+                          Browser
+                             │
+            ┌────────────────┴────────────────┐
+            ▼                                 ▼
+   Socket.IO /socket.io              Yjs WebSocket /yjs
+            │                                 │
+            └────────────────┬────────────────┘
+                             ▼
+                 Unified Express / HTTP Server
+                          (Port 3001)
 ```
 
 ---
@@ -77,8 +83,8 @@ Graceful shutdown
 | `socket.io` | 4 | WebSocket abstraction with rooms |
 | `cors` | 2 | CORS middleware |
 | `ws` | 8 | Raw WebSocket (transitive dep) |
-| `yjs` | 13 | (Listed; available if server-side Yjs processing is added) |
-| `y-websocket` | 1 | (Listed; run separately via `npx y-websocket-server`) |
+| `yjs` | 13 | Yjs CRDT shared types |
+| `y-websocket` | 1 | WebSocket provider utilities for Yjs |
 
 ---
 
@@ -93,12 +99,7 @@ npm run dev      # node --watch (auto-restart on file changes)
 npm start        # plain node index.js
 ```
 
-The server starts on **http://localhost:3001**.
-
-> The Yjs relay must also be running:
-> ```bash
-> npx y-websocket-server --port 1234
-> ```
+The server starts on **http://localhost:3001**. Yjs clients connect to WebSocket at `ws://localhost:3001/yjs`.
 
 ---
 
@@ -216,8 +217,7 @@ docker run -p 3001:3001 -e CLIENT_ORIGIN=https://yourdomain.com collab-docs-serv
   horizontal scaling.
 - **No authentication** — any client with the correct socket URL can join any document
   room. Implement JWT middleware before production.
-- **y-websocket-server is separate** — Yjs CRDT sync runs as a completely independent
-  process. This server only handles metadata / snapshots, not the live delta stream.
+- **In-memory snapshots** — Socket.IO metadata & snapshots live in memory and are lost on server restart. In production, persistent storage should be used.
 
 ---
 

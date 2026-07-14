@@ -2,6 +2,8 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const WebSocket = require("ws");
+const { setupWSConnection } = require("y-websocket/bin/utils");
 
 /* ─── Configuration ───────────────────────────────────────────── */
 const PORT = process.env.PORT || 3001;
@@ -34,6 +36,29 @@ const io = new Server(server, {
     origin: CLIENT_ORIGIN,
     methods: ["GET", "POST"],
   },
+});
+
+/* ─── Yjs WebSocket server (noServer mode) ────────────────────── */
+/**
+ * Attach a Yjs WebSocket server to the same HTTP server on the /yjs path.
+ * noServer: true — it shares the HTTP server's port; no second port is opened.
+ * Socket.IO handles its own /socket.io upgrades internally, so we only
+ * forward upgrade requests whose pathname starts with /yjs.
+ */
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on("connection", setupWSConnection);
+
+server.on("upgrade", (request, socket, head) => {
+  const pathname = new URL(request.url, "http://x").pathname;
+
+  if (pathname === "/yjs") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  }
+  // All other paths (e.g. /socket.io) are handled by their own
+  // middleware — do NOT destroy the socket here.
 });
 
 /* ─── In-memory document store ────────────────────────────────── */
