@@ -13,9 +13,9 @@ const YJS_URL =
 export const createYjs = (docId) => {
   const ydoc = new Y.Doc();
 
-  new IndexeddbPersistence(docId, ydoc);
+  const persistence = new IndexeddbPersistence(docId, ydoc);
 
   const provider = new WebsocketProvider(YJS_URL, docId, ydoc);
 
-  return { ydoc, provider };
+  return { ydoc, provider, persistence };
 };
