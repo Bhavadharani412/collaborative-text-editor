@@ -10,6 +10,9 @@ import { createYjs } from "../services/yjsProvider";
 
 import html2pdf from "html2pdf.js";
 import { saveAs } from "file-saver";
+import { io } from "socket.io-client";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 Quill.register("modules/cursors", QuillCursors);
 
@@ -117,6 +120,7 @@ export default function Editor() {
   const [connected, setConnected] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [loadProgress, setLoadProgress] = useState(null); // chunked loading progress state
 
   // Track whether we've received the initial title via awareness
   // (so we don't overwrite a remote title with stale localStorage on first load)
@@ -228,23 +232,60 @@ export default function Editor() {
       });
     }, 300);
 
-    /* ── Word/char counter ─────────────────────────────────── */
+    /* ── Debounced word/char counter (prevents UI freezing on large docs) ── */
+    let countTimeout = null;
     quill.on("text-change", () => {
-      const text = quill.getText();
-      setWordCount(countWords(text));
-      setCharCount(Math.max(0, text.length - 1));
+      if (countTimeout) clearTimeout(countTimeout);
+      countTimeout = setTimeout(() => {
+        const text = quill.getText();
+        setWordCount(countWords(text));
+        setCharCount(Math.max(0, text.length - 1));
+      }, 300);
     });
 
     /* ── Yjs real-time collaboration ───────────────────────── */
     const docId = id || "default-doc";
     let cleanup = null;
 
+    /* ── Socket.IO connection for chunked document transfers ── */
+    const socket = io(API_URL);
+    const chunkBufferRef = { chunks: [], total: 0 };
+
+    socket.emit("join-document", docId);
+
+    socket.on("load-document-start", ({ totalChunks }) => {
+      chunkBufferRef.chunks = new Array(totalChunks);
+      chunkBufferRef.total = totalChunks;
+      setLoadProgress({ current: 0, total: totalChunks, percent: 0 });
+    });
+
+    socket.on("load-document-chunk", ({ chunk, chunkIndex, totalChunks, isLast }) => {
+      chunkBufferRef.chunks[chunkIndex] = chunk;
+      const received = chunkBufferRef.chunks.filter((c) => c !== undefined).length;
+      const pct = Math.round((received / totalChunks) * 100);
+      setLoadProgress({ current: received, total: totalChunks, percent: pct });
+
+      if (isLast || received === totalChunks) {
+        setTimeout(() => setLoadProgress(null), 600);
+      }
+    });
+
+    socket.on("load-document", () => {
+      setLoadProgress(null);
+    });
+
     try {
-      const { ydoc, provider } = createYjs(docId);
+      const { ydoc, provider, persistence } = createYjs(docId);
 
       provider.on("status", (event) => {
         setConnected(event.status === "connected");
       });
+
+      if (persistence) {
+        persistence.on("synced", () => {
+          // IndexedDB offline cache synced fast
+        });
+      }
 
       const awareness = provider.awareness;
       const ytext = ydoc.getText("quill");
@@ -317,6 +358,8 @@ export default function Editor() {
       });
 
       cleanup = () => {
+        if (countTimeout) clearTimeout(countTimeout);
+        socket.disconnect();
         provider.disconnect();
         ydoc.destroy();
       };
@@ -432,6 +475,13 @@ export default function Editor() {
               </div>
             ))}
           </div>
+
+          {loadProgress && (
+            <div className="conn-badge chunk-progress" style={{ background: "#e8f0fe", color: "#1a73e8", borderColor: "#aecbfa" }} title={`Loading chunk ${loadProgress.current} of ${loadProgress.total}`}>
+              <span className="conn-dot" style={{ background: "#1a73e8" }} />
+              Loading {loadProgress.percent}%
+            </div>
+          )}
 
           <div className={`conn-badge ${connected ? "online" : "offline"}`}>
             <span className="conn-dot" />

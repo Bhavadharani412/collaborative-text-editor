@@ -45,7 +45,7 @@ const io = new Server(server, {
  * Socket.IO handles its own /socket.io upgrades internally, so we only
  * forward upgrade requests whose pathname starts with /yjs.
  */
-const wss = new WebSocket.Server({ noServer: true });
+const wss = new WebSocket.Server({ noServer: true, perMessageDeflate: true });
 
 wss.on("connection", setupWSConnection);
 
@@ -68,6 +68,7 @@ server.on("upgrade", (request, socket, head) => {
  */
 const documents = {};
 const documentOrder = []; // insertion order for eviction
+const CHUNK_SIZE = 64 * 1024; // 64KB chunk size threshold
 
 function storeDocument(docId, content) {
   if (!documents[docId]) {
@@ -88,8 +89,7 @@ io.on("connection", (socket) => {
 
   /**
    * FIX: join-document only joins the room and sends the initial load.
-   * send-changes / save-document are registered as TOP-LEVEL socket events
-   * (not nested) to prevent stacking duplicate listeners on every reconnect.
+   * Large documents (> 64KB) are transmitted in sequential chunks to optimize memory and transfer speeds.
    */
   socket.on("join-document", (docId) => {
     if (!docId || typeof docId !== "string") {
@@ -108,7 +108,24 @@ io.on("connection", (socket) => {
       storeDocument(docId, "");
     }
 
-    socket.emit("load-document", documents[docId]);
+    const content = documents[docId] || "";
+    if (typeof content === "string" && content.length > CHUNK_SIZE) {
+      const totalChunks = Math.ceil(content.length / CHUNK_SIZE);
+      console.log(`[socket] Transmitting doc ${docId} in ${totalChunks} chunks to ${socket.id}`);
+      socket.emit("load-document-start", { docId, totalChunks, totalSize: content.length });
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = content.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        socket.emit("load-document-chunk", {
+          docId,
+          chunk,
+          chunkIndex: i,
+          totalChunks,
+          isLast: i === totalChunks - 1,
+        });
+      }
+    } else {
+      socket.emit("load-document", content);
+    }
     console.log(`[socket] ${socket.id} joined document: ${docId}`);
   });
 
